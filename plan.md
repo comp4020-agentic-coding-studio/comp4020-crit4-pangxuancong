@@ -340,7 +340,15 @@ into the existing architecture without touching §5/§6's core:
   existing delay rather than replacing it. `TUNE.reverbSeconds`,
   `TUNE.reverbDecay`, `TUNE.reverbWet` control it; wet level starts low
   because two spatial effects stacking is the fastest way back to mud.
-- **React**: resolved as {{RESOLUTION — filled in once scope is confirmed}}.
+- **React** (`src/components/Chrome.tsx`, `@astrojs/react`): scoped to exactly
+  what was confirmed — the corner FLUID/nav chrome and the "touch the sound"
+  invite, both UI-state transitions rather than the instrument itself. The
+  engine still owns no DOM inside this component; it dispatches a
+  `fluid:first-interaction` window event on the first gesture, and the
+  component's own `useEffect` decides what to do with it. Astro server-renders
+  the island, so the `<h1>`/`<nav>` invariants check are present in the built
+  HTML with no client JS required — `client:load` only adds the transition on
+  top of markup that already exists.
 
 ## Working rules
 
