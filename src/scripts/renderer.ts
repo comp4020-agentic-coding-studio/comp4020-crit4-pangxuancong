@@ -12,6 +12,20 @@ import type { RenderPoint } from "./pointer";
 // it stays here rather than in tune.ts.
 const MAX_POINTS = 8;
 
+const clamp = (value: number, min: number, max: number): number =>
+  Math.min(max, Math.max(min, value));
+
+/**
+ * The same brightness→hue mapping the shader computes per pixel, exposed so
+ * the particle system colours sparkles to match rather than reimplementing
+ * (and inevitably drifting from) the shader's formula.
+ */
+export function hueForPoint(brightness01: number, energy01: number): number {
+  const hue = TUNE.hueLow + (TUNE.hueHigh - TUNE.hueLow) * clamp(brightness01, 0, 1);
+  const shift = clamp(energy01 * 0.5, 0, 1);
+  return hue + (TUNE.fastHueShift - hue) * shift;
+}
+
 const VERTEX_SRC = `
 attribute vec2 aPosition;
 varying vec2 vUv;

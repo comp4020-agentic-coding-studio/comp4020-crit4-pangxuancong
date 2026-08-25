@@ -4,10 +4,13 @@
  * draws. No audio or gesture logic lives here — see audio.ts / pointer.ts.
  */
 import { getActiveVoiceCount, getAnalyser, getVoiceSnapshot } from "./audio";
-import { getDebugGestures, getRenderPoints, initPointerInput } from "./pointer";
-import { FluidRenderer } from "./renderer";
+import { initCursor, updateCursor } from "./cursor";
+import { spawnParticles, initParticles, resizeParticles, updateAndDrawParticles } from "./particles";
+import { drainSparkleEvents, getDebugGestures, getRenderPoints, initPointerInput } from "./pointer";
+import { FluidRenderer, hueForPoint } from "./renderer";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#stage");
+const sparkleCanvas = document.querySelector<HTMLCanvasElement>("#sparkles");
 const invite = document.querySelector<HTMLElement>("#invite");
 
 if (canvas) {
@@ -21,11 +24,15 @@ if (canvas) {
     renderer = null;
   }
 
+  if (sparkleCanvas) initParticles(sparkleCanvas);
+  initCursor(document.body);
+
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
   function resize(): void {
     if (!canvas) return;
     renderer?.resize(canvas.clientWidth, canvas.clientHeight, dpr);
+    if (sparkleCanvas) resizeParticles(canvas.clientWidth, canvas.clientHeight, dpr);
   }
   window.addEventListener("resize", resize);
   resize();
@@ -69,6 +76,20 @@ if (canvas) {
     const points = getRenderPoints(now);
     const analyserEnergy = readAnalyserEnergy();
     renderer?.draw(now / 1000, points, analyserEnergy, reducedMotionQuery.matches);
+
+    for (const event of drainSparkleEvents()) {
+      spawnParticles({
+        x: event.x,
+        y: event.y,
+        vx: event.vx,
+        vy: event.vy,
+        hue: hueForPoint(event.brightness, event.energy),
+        boost: event.boost,
+      });
+    }
+    if (canvas) updateAndDrawParticles(dt / 1000, canvas.clientWidth, canvas.clientHeight);
+
+    updateCursor();
 
     if (debugEl) updateDebugOverlay(debugEl, smoothedFps);
 

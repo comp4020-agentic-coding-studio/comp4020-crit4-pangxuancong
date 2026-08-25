@@ -77,6 +77,19 @@ export function ensureAudio(): AudioContext {
   delay.connect(wet);
   wet.connect(master);
 
+  // A second, parallel spatial effect: a procedurally generated impulse
+  // response, so there's no audio asset to fetch and nothing to wait for on
+  // the first note. Wet level stays low — two spatial effects stacked hot
+  // is the fastest way back to mud.
+  const convolver = audioCtx.createConvolver();
+  convolver.buffer = createImpulseResponse(audioCtx);
+  convolver.normalize = true;
+  const reverbWet = audioCtx.createGain();
+  reverbWet.gain.value = TUNE.reverbWet;
+  bus.connect(convolver);
+  convolver.connect(reverbWet);
+  reverbWet.connect(master);
+
   ctx = audioCtx;
   voiceBus = bus;
   analyser = analyserNode;
@@ -86,6 +99,19 @@ export function ensureAudio(): AudioContext {
 
 export function getAnalyser(): AnalyserNode | null {
   return analyser;
+}
+
+/** Filtered noise with an exponential decay — no fetched impulse asset. */
+function createImpulseResponse(audioCtx: AudioContext): AudioBuffer {
+  const length = Math.max(1, Math.floor(audioCtx.sampleRate * TUNE.reverbSeconds));
+  const impulse = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
+  for (let channel = 0; channel < impulse.numberOfChannels; channel += 1) {
+    const data = impulse.getChannelData(channel);
+    for (let i = 0; i < length; i += 1) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / length) ** TUNE.reverbDecay;
+    }
+  }
+  return impulse;
 }
 
 export function getActiveVoiceCount(): number {

@@ -22,6 +22,9 @@ export const TUNE = {
   masterGain: 0.22,
   maxVoices: 5,
   targetSpeed: 1800, // px/s treated as "fast" for energy/glide/pan
+  reverbSeconds: 2.2,
+  reverbDecay: 3.2,
+  reverbWet: 0.16, // kept low — delay + reverb stacked too hot turns to mud
 
   // --- visual ---
   idleCycleSec: 11,
@@ -33,6 +36,17 @@ export const TUNE = {
   sparkleThreshold: 900, // px/s to seed a sparkle
   ghostDecaySec: 1.0,
   reducedMotionScale: 0.35,
+
+  // --- particles (secondary; sparkle only, not the main visual) ---
+  sparkleMaxCount: 60,
+  sparkleLifetimeMinSec: 0.5,
+  sparkleLifetimeMaxSec: 2.0,
+  sparkleSize: 2.4,
+  sparkleDrift: 40, // px/s-equivalent noise drift in normalized space
+  sparkleNoteChangeThreshold: 0.15, // min energy for a note-change to sparkle
+
+  // --- custom cursor ---
+  cursorSmoothing: 0.25,
 
   // --- scale ---
   scaleDegrees: [0, 3, 5, 7, 10], // C minor pentatonic

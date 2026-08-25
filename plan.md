@@ -36,24 +36,23 @@ looks most impressive on paper.
   problems by describing them precisely instead of paying for guesses
 - Keyboard input (see §2 below — this is a correction to the brief, not a cut)
 
-**Cut, and why:**
-- **Standalone particle system** → sparkle is drawn directly in the shader as
-  bright points seeded by tap/velocity events. Doing it in the same pass is
-  cheaper *and* satisfies the brief's own §14 (sound and image as one object)
-  better than a second system would.
-- **Procedural convolution reverb** → delay + feedback lowpass only. Reverb is
-  the most expensive node in the graph for the least certain return at this
-  budget; add it back only if there's time left after tuning.
-- **Custom cursor** → the shader's glowing pointer well already plays that
-  role; a separate cursor layer would just duplicate it.
-- **React** → this repo has no React and none is being added. Nothing here
-  needs component lifecycle; frame-by-frame state lives in plain module-level
-  objects as the brief's own §18/§21 already require.
-- **12-directory source tree** → five files: `tune.ts` (every tunable constant
-  — see [Tuning](#7-tuning)), `audio.ts`, `pointer.ts`, `renderer.ts` (shader
-  source as a template string — no glsl loader to configure), `main.ts`
-  (wiring). One voice class lives in `audio.ts`; it doesn't need its own file
-  at this size.
+**Cut initially, then reinstated once the core was built and heard/seen to
+work** (confirmed after the first pass shipped): standalone particle system,
+custom cursor, procedural convolution reverb. Each is additive to the
+architecture above rather than a redesign, which is exactly why they were
+safe to defer — see the addendum after §11 for how each was actually built.
+
+**Still cut:**
+- **12-directory source tree** → files: `tune.ts` (every tunable constant —
+  see [Tuning](#7-tuning)), `audio.ts`, `pointer.ts`, `renderer.ts` (shader
+  source as a template string — no glsl loader to configure), `particles.ts`,
+  `cursor.ts`, `main.ts` (wiring). One voice class lives in `audio.ts`; it
+  doesn't need its own file at this size.
+- **React** — pending a specific answer to "animate what, exactly": this
+  repo has no React today, and adding it is a real architectural change (a
+  new dependency, an Astro integration, and — critically — something with
+  component lifecycle sitting next to a 60fps loop that was deliberately kept
+  out of any framework's hands). See the addendum for the resolution.
 
 ## 2. Resolving conflicts with this repo's fixed contract
 
@@ -284,8 +283,6 @@ No new dependencies. WebGL via the browser API directly, no library.
 
 Not in this build; do not add these, and do not propose them.
 
-- Standalone particle system, custom cursor, procedural convolution reverb,
-  React — see §1
 - Multi-pass / framebuffer feedback rendering
 - Debug-mode features beyond FPS, pointer coords, speed, current note, cutoff,
   voice count
@@ -314,6 +311,36 @@ Judged by ear/eye, mine to verify:
 - [ ] The field returns to a clean idle within a few seconds of release, so a
       second player at the crit isn't inheriting the first player's residue
 - [ ] Works at 1920×1080 and 390×844; touch verified on a real device
+
+## Addendum: reinstating particles, cursor, reverb
+
+Requested after the first pass was built, heard, and approved. Each slots
+into the existing architecture without touching §5/§6's core:
+
+- **Particle system** (`particles.ts`): a fixed-size pool (`TUNE.sparkleMaxCount`),
+  drawn on its own 2D canvas layered over the WebGL one — a second cheap
+  draw call, not a second renderer. Spawned by `pointer.ts` on three events
+  (a tap, a velocity-threshold crossing, a note change mid-drag), each
+  carrying the gesture's direction so particles inherit it, colour matched
+  via the same brightness→hue mapping the shader uses
+  (`renderer.hueForPoint`, extracted so there's one formula, not two).
+  Pool-exhaustion drops new spawns rather than growing the array — bounded
+  by construction, not by discipline.
+- **Custom cursor** (`cursor.ts`): two DOM elements (ring + dot), hidden
+  entirely when `(pointer: fine)` doesn't match (touch devices get no
+  cursor, per the original brief). Position is smoothed the same way the
+  shader's pointer wells are (`target += (goal - target) * smoothing`); the
+  ring compresses on press and stretches along the direction of fast motion.
+  It replaces the OS cursor, not the shader's glow — both read as the same
+  gesture from two different layers now, which is a stronger visual than
+  either alone.
+- **Reverb** (`audio.ts`): a `ConvolverNode` fed by a procedurally generated
+  stereo impulse response (filtered noise, exponential decay — no fetched
+  asset, so it costs nothing at first paint), running in parallel with the
+  existing delay rather than replacing it. `TUNE.reverbSeconds`,
+  `TUNE.reverbDecay`, `TUNE.reverbWet` control it; wet level starts low
+  because two spatial effects stacking is the fastest way back to mud.
+- **React**: resolved as {{RESOLUTION — filled in once scope is confirmed}}.
 
 ## Working rules
 

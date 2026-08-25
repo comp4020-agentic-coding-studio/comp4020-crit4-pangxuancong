@@ -40,11 +40,29 @@ interface Gesture {
   lastX: number;
   lastY: number;
   lastT: number;
+  startedAt: number;
   speed: number; // smoothed px/s — raw per-event velocity is too noisy to use directly
+  vx: number; // normalized units/s, direction only — feeds particle drift
+  vy: number;
+  distanceAccum: number; // normalized path length, to tell a tap from a drag
+  sparkledFast: boolean; // debounces the velocity-threshold sparkle
   pan: number; // rolling average, follows gesture direction rather than position
   brightness: number; // 0..1, 1 = bright/top; the single source both audio and visuals read
   midi: number;
 }
+
+export interface SparkleEvent {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  brightness: number;
+  energy: number;
+  /** 0..1 — a tap ("droplet") is a bigger burst than a threshold crossing or note change. */
+  boost: number;
+}
+
+const sparkleQueue: SparkleEvent[] = [];
 
 export interface RenderPoint {
   x: number;
@@ -97,7 +115,12 @@ function beginGesture(id: string, nx: number, ny: number, now: number): void {
     lastX: nx,
     lastY: ny,
     lastT: now,
+    startedAt: now,
     speed: 0,
+    vx: 0,
+    vy: 0,
+    distanceAccum: 0,
+    sparkledFast: false,
     pan: 0,
     brightness: 1 - ny,
     midi: midiForNormalizedX(nx),
@@ -111,15 +134,21 @@ function moveGesture(id: string, nx: number, ny: number, now: number): void {
   if (!gesture) return;
 
   const dt = Math.max(0.001, (now - gesture.lastT) / 1000);
-  const rawSpeed = Math.hypot(nx - gesture.lastX, ny - gesture.lastY) / dt;
+  const dx = nx - gesture.lastX;
+  const dy = ny - gesture.lastY;
+  const rawSpeed = Math.hypot(dx, dy) / dt;
   // Screen-space speed, not normalized — otherwise a small viewport would
   // read every gesture as "fast".
   const rawSpeedPx = rawSpeed * Math.max(canvasEl?.clientWidth ?? 1, canvasEl?.clientHeight ?? 1);
   gesture.speed += (rawSpeedPx - gesture.speed) * 0.35;
+  gesture.vx = dx / dt;
+  gesture.vy = dy / dt;
+  gesture.distanceAccum += Math.hypot(dx, dy);
 
   const panTarget = clamp((nx - gesture.lastX) / dt, -1, 1) * TUNE.panRange;
   gesture.pan += (panTarget - gesture.pan) * 0.15;
 
+  const previousMidi = gesture.midi;
   gesture.lastX = nx;
   gesture.lastY = ny;
   gesture.lastT = now;
@@ -128,7 +157,35 @@ function moveGesture(id: string, nx: number, ny: number, now: number): void {
   gesture.brightness = 1 - ny;
   gesture.midi = midiForNormalizedX(nx);
 
+  const energy = energyForSpeed(gesture.speed);
+
+  // A fast pass sparkles once per crossing, not once per frame above it.
+  if (gesture.speed >= TUNE.sparkleThreshold) {
+    if (!gesture.sparkledFast) {
+      gesture.sparkledFast = true;
+      queueSparkle(gesture, energy, energy);
+    }
+  } else if (gesture.speed < TUNE.sparkleThreshold * 0.6) {
+    gesture.sparkledFast = false;
+  }
+
+  if (gesture.midi !== previousMidi && energy >= TUNE.sparkleNoteChangeThreshold) {
+    queueSparkle(gesture, energy, 0.3);
+  }
+
   updateVoice(id, targetFor(gesture));
+}
+
+function queueSparkle(gesture: Gesture, energy: number, boost: number): void {
+  sparkleQueue.push({
+    x: gesture.x,
+    y: gesture.y,
+    vx: gesture.vx,
+    vy: gesture.vy,
+    brightness: gesture.brightness,
+    energy,
+    boost,
+  });
 }
 
 function endGesture(id: string): void {
@@ -136,6 +193,14 @@ function endGesture(id: string): void {
   if (!gesture) return;
   gestures.delete(id);
   releaseVoice(id);
+
+  // A short, mostly-still press-release reads as a tap — a bigger "droplet"
+  // burst than the sparkles a drag seeds along the way.
+  const heldFor = performance.now() - gesture.startedAt;
+  if (heldFor < 180 && gesture.distanceAccum < 0.02) {
+    queueSparkle(gesture, 0.4, 1);
+  }
+
   ghosts.set(id, {
     x: gesture.x,
     y: gesture.y,
@@ -143,6 +208,11 @@ function endGesture(id: string): void {
     energy: energyForSpeed(gesture.speed),
     releasedAt: performance.now(),
   });
+}
+
+export function drainSparkleEvents(): SparkleEvent[] {
+  const events = sparkleQueue.splice(0, sparkleQueue.length);
+  return events;
 }
 
 /** Force every gesture and voice off — the stuck-note safety net. */
@@ -170,7 +240,12 @@ function beginKeyboardNote(key: string, now: number): void {
     lastX: nx,
     lastY: 1 - brightness,
     lastT: now,
+    startedAt: now,
     speed: 0,
+    vx: 0,
+    vy: 0,
+    distanceAccum: 1, // never reads as a tap — keyboard notes don't sparkle on release
+    sparkledFast: false,
     pan: 0,
     brightness,
     midi,
