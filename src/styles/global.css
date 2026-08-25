@@ -1,84 +1,16 @@
-:root {
-  --ground: #0b0e14;
-  --chrome: rgb(255 255 255 / 38%);
-  --chrome-strong: rgb(255 255 255 / 68%);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  height: 100%;
-}
-
 body {
   margin: 0;
-  overflow: hidden;
-  background: var(--ground);
-  color: var(--chrome);
+  padding: 2rem;
   font-family: system-ui, sans-serif;
-  line-height: 1.5;
+  line-height: 1.6;
+  color: #1a1a1a;
 }
 
-/* The stage is the instrument: full-bleed, and touch-action none or scrolling
-   steals the gesture before it ever reaches a pointer handler. */
-#stage {
-  position: fixed;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  touch-action: none;
+main {
+  max-width: 40rem;
+  margin: 0 auto;
 }
 
-/* The heading and the nav are required of every page, so they stay real and
-   readable — just understated enough to leave the opening screen quiet. */
-.chrome {
-  position: fixed;
-  top: 0;
-  left: 0;
-  display: flex;
-  gap: 1rem;
-  align-items: baseline;
-  padding: 1rem 1.25rem;
-  pointer-events: none;
-}
-
-.chrome h1 {
-  margin: 0;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.chrome nav {
-  pointer-events: auto;
-}
-
-.chrome a {
-  color: inherit;
-  font-size: 0.8125rem;
-  text-decoration: none;
-  border-bottom: 1px solid rgb(255 255 255 / 20%);
-}
-
-.chrome a:hover,
-.chrome a:focus-visible {
-  color: var(--chrome-strong);
-  border-bottom-color: currentcolor;
-}
-
-.sr-only {
-  position: absolute;
-  overflow: hidden;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  border: 0;
-  clip-path: inset(50%);
-  white-space: nowrap;
+a {
+  color: #0b5fff;
 }
