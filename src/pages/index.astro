@@ -3,21 +3,34 @@ import Layout from "../layouts/Layout.astro";
 ---
 
 <Layout
-  title="COMP4020 prototype"
-  description="Replace this with one sentence saying what this page is. A search result and a link preview both show it."
+  title="Loop — a browser instrument"
+  description="Press anywhere and it sounds, then keeps looping. Layer gestures, hear them fade, and play it with a mouse, a keyboard or your thumbs."
 >
-  <header>
+  <main>
+    <canvas
+      id="stage"
+      role="application"
+      aria-describedby="how"
+      aria-label="A looping instrument. Press anywhere to sound a note; where you press sets its pitch and brightness, and how long you hold sets its length."
+    ></canvas>
+  </main>
+
+  <header class="chrome">
+    <h1>Loop</h1>
     <nav aria-label="Primary">
-      <a href="./">Home</a>
+      <a
+        href="https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/crits/04-instrument/"
+        >Brief</a
+      >
     </nav>
   </header>
-  <main>
-    <h1>COMP4020 prototype</h1>
-    <p data-testid="intro">
-      Replace this with your prototype. This week's brief is on the course
-      website; <code>spec/README.md</code> explains how the checks in this repo
-      relate to it.
-    </p>
-  </main>
+
+  <p id="how" class="sr-only">
+    Press or tap anywhere on the stage to play a note. Higher up is a higher
+    pitch, further right is a brighter tone, and holding longer makes a longer
+    note. Each note joins a repeating loop and fades away after a few passes.
+    The keys A through K play the scale; hold a key to sustain its note.
+  </p>
+
   <script src="../scripts/main.ts"></script>
 </Layout>
