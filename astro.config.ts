@@ -1,5 +1,7 @@
 import { defineConfig } from "astro/config";
 
+import react from "@astrojs/react";
+
 // Written by the course stack skill; values derived from this repo's origin
 // remote. The dev server serves under the base too, so a path bug reproduces
 // locally instead of only on the live URL. build.format "file" keeps
@@ -11,4 +13,5 @@ export default defineConfig({
   base: "/comp4020-crit4-pangxuancong",
   build: { format: "file" },
   compressHTML: true,
+  integrations: [react()],
 });

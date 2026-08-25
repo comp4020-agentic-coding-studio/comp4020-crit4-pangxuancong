@@ -1,5 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import Chrome from "../components/Chrome";
 ---
 
 <Layout
@@ -16,17 +17,7 @@ import Layout from "../layouts/Layout.astro";
     <canvas id="sparkles" aria-hidden="true"></canvas>
   </main>
 
-  <header class="chrome">
-    <h1>FLUID</h1>
-    <nav aria-label="Primary">
-      <a
-        href="https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/crits/04-instrument/"
-        >Brief</a
-      >
-    </nav>
-  </header>
-
-  <p id="invite">touch the sound</p>
+  <Chrome client:load />
 
   <p id="how" class="sr-only">
     Press or drag anywhere on the field to play. Position up and down sets

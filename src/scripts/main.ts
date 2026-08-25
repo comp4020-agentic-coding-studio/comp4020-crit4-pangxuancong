@@ -11,7 +11,6 @@ import { FluidRenderer, hueForPoint } from "./renderer";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#stage");
 const sparkleCanvas = document.querySelector<HTMLCanvasElement>("#sparkles");
-const invite = document.querySelector<HTMLElement>("#invite");
 
 if (canvas) {
   let renderer: FluidRenderer | null = null;
@@ -38,8 +37,10 @@ if (canvas) {
   resize();
 
   initPointerInput(canvas, {
+    // The engine doesn't own the invite text's DOM — Chrome.tsx does. It only
+    // announces the event; React decides how to react to it.
     onFirstInteraction: () => {
-      invite?.classList.add("faded");
+      window.dispatchEvent(new CustomEvent("fluid:first-interaction"));
     },
   });
 
