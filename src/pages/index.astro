@@ -3,21 +3,36 @@ import Layout from "../layouts/Layout.astro";
 ---
 
 <Layout
-  title="COMP4020 prototype"
-  description="Replace this with one sentence saying what this page is. A search result and a link preview both show it."
+  title="FLUID"
+  description="Touch and sculpt sound inside a living fluid field. No controls — press, drag, or hold to play it with a mouse, a keyboard, or your fingers."
 >
-  <header>
+  <main>
+    <canvas
+      id="stage"
+      role="application"
+      aria-describedby="how"
+      aria-label="FLUID, a fluid audiovisual instrument. Press or drag anywhere to sculpt sound; higher up is brighter, further right is a higher pitch, and holding longer sustains the tone."
+    ></canvas>
+  </main>
+
+  <header class="chrome">
+    <h1>FLUID</h1>
     <nav aria-label="Primary">
-      <a href="./">Home</a>
+      <a
+        href="https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/crits/04-instrument/"
+        >Brief</a
+      >
     </nav>
   </header>
-  <main>
-    <h1>COMP4020 prototype</h1>
-    <p data-testid="intro">
-      Replace this with your prototype. This week's brief is on the course
-      website; <code>spec/README.md</code> explains how the checks in this repo
-      relate to it.
-    </p>
-  </main>
+
+  <p id="invite">touch the sound</p>
+
+  <p id="how" class="sr-only">
+    Press or drag anywhere on the field to play. Position up and down sets
+    brightness, left to right sets pitch, and how long you hold sets how long
+    the note sustains. The keys A through K play the scale; hold a key to
+    sustain it, and the arrow keys adjust its brightness.
+  </p>
+
   <script src="../scripts/main.ts"></script>
 </Layout>
