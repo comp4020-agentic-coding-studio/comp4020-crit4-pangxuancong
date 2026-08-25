@@ -25,6 +25,8 @@ export const TUNE = {
   reverbSeconds: 2.2,
   reverbDecay: 3.2,
   reverbWet: 0.16, // kept low — delay + reverb stacked too hot turns to mud
+  bandLowMaxHz: 200, // below this: the "large slow pulse" band
+  bandMidMaxHz: 2000, // between low and this: the "main flow" band; above: shimmer
 
   // --- visual ---
   idleCycleSec: 11,

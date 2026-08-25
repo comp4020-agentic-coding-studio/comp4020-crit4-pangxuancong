@@ -54,7 +54,9 @@ export function ensureAudio(): AudioContext {
   bus.connect(master);
 
   const analyserNode = audioCtx.createAnalyser();
-  analyserNode.fftSize = 256;
+  // 1024 rather than 256: enough bins below TUNE.bandLowMaxHz to make the low
+  // band meaningful, still cheap since the browser computes the FFT either way.
+  analyserNode.fftSize = 1024;
   analyserNode.smoothingTimeConstant = 0.75;
   bus.connect(analyserNode);
 

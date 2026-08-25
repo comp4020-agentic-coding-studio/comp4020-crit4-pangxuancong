@@ -8,6 +8,7 @@ import { initCursor, updateCursor } from "./cursor";
 import { spawnParticles, initParticles, resizeParticles, updateAndDrawParticles } from "./particles";
 import { drainSparkleEvents, getDebugGestures, getRenderPoints, initPointerInput } from "./pointer";
 import { FluidRenderer, hueForPoint } from "./renderer";
+import { TUNE } from "./tune";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#stage");
 const sparkleCanvas = document.querySelector<HTMLCanvasElement>("#sparkles");
@@ -46,21 +47,54 @@ if (canvas) {
 
   const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-  let analyserBins: Uint8Array<ArrayBuffer> | null = null;
-  function readAnalyserEnergy(): number {
+  interface BandEnergies {
+    low: number;
+    mid: number;
+    high: number;
+  }
+
+  let freqBins: Uint8Array<ArrayBuffer> | null = null;
+  /**
+   * A very faint background haze, not a spectrum display (see plan.md's
+   * addendum): three band averages, not a per-bin readout, so there's
+   * nothing shaped like a visualizer to recognise as one.
+   */
+  function readBandEnergies(): BandEnergies {
     const analyser = getAnalyser();
-    if (!analyser) return 0;
-    if (!analyserBins || analyserBins.length !== analyser.fftSize) {
-      analyserBins = new Uint8Array(analyser.fftSize);
+    if (!analyser) return { low: 0, mid: 0, high: 0 };
+    if (!freqBins || freqBins.length !== analyser.frequencyBinCount) {
+      freqBins = new Uint8Array(analyser.frequencyBinCount);
     }
-    analyser.getByteTimeDomainData(analyserBins);
-    let sumSquares = 0;
-    for (let i = 0; i < analyserBins.length; i += 1) {
-      const sample = analyserBins[i] ?? 128;
-      const v = (sample - 128) / 128;
-      sumSquares += v * v;
+    analyser.getByteFrequencyData(freqBins);
+
+    const binHz = analyser.context.sampleRate / analyser.fftSize;
+    let lowSum = 0;
+    let lowCount = 0;
+    let midSum = 0;
+    let midCount = 0;
+    let highSum = 0;
+    let highCount = 0;
+
+    for (let i = 0; i < freqBins.length; i += 1) {
+      const hz = i * binHz;
+      const value = (freqBins[i] ?? 0) / 255;
+      if (hz < TUNE.bandLowMaxHz) {
+        lowSum += value;
+        lowCount += 1;
+      } else if (hz < TUNE.bandMidMaxHz) {
+        midSum += value;
+        midCount += 1;
+      } else {
+        highSum += value;
+        highCount += 1;
+      }
     }
-    return Math.sqrt(sumSquares / analyserBins.length);
+
+    return {
+      low: lowCount ? lowSum / lowCount : 0,
+      mid: midCount ? midSum / midCount : 0,
+      high: highCount ? highSum / highCount : 0,
+    };
   }
 
   const debugEl =
@@ -75,8 +109,8 @@ if (canvas) {
     smoothedFps += (1000 / Math.max(1, dt) - smoothedFps) * 0.1;
 
     const points = getRenderPoints(now);
-    const analyserEnergy = readAnalyserEnergy();
-    renderer?.draw(now / 1000, points, analyserEnergy, reducedMotionQuery.matches);
+    const bands = readBandEnergies();
+    renderer?.draw(now / 1000, points, bands, reducedMotionQuery.matches);
 
     for (const event of drainSparkleEvents()) {
       spawnParticles({
@@ -92,7 +126,7 @@ if (canvas) {
 
     updateCursor();
 
-    if (debugEl) updateDebugOverlay(debugEl, smoothedFps);
+    if (debugEl) updateDebugOverlay(debugEl, smoothedFps, bands);
 
     window.requestAnimationFrame(frame);
   }
@@ -106,10 +140,11 @@ function createDebugOverlay(): HTMLElement {
   return el;
 }
 
-function updateDebugOverlay(el: HTMLElement, fps: number): void {
+function updateDebugOverlay(el: HTMLElement, fps: number, bands: { low: number; mid: number; high: number }): void {
   const lines = [
     `fps ${fps.toFixed(0)}`,
     `voices ${getActiveVoiceCount()}`,
+    `bands low${bands.low.toFixed(2)} mid${bands.mid.toFixed(2)} high${bands.high.toFixed(2)}`,
     ...getDebugGestures().map((g) => {
       const snapshot = getVoiceSnapshot(g.id);
       const cutoff = snapshot ? Math.round(snapshot.cutoffHz) : "-";

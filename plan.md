@@ -350,6 +350,28 @@ into the existing architecture without touching §5/§6's core:
   HTML with no client JS required — `client:load` only adds the transition on
   top of markup that already exists.
 
+## Addendum: band-driven ambient haze
+
+Requested as a "background audio visualizer" — resolved, after checking the
+intent against §8's explicit "no visible frequency bars", as an extension of
+the existing analyser→shader coupling rather than a literal spectrum display.
+`getAnalyser()`'s single RMS scalar became three band averages (low <200Hz,
+mid 200Hz–2kHz, high >2kHz — `TUNE.bandLowMaxHz`/`bandMidMaxHz`), each driving
+a distinct, already-organic shader behaviour rather than a bar or a wedge:
+
+- **low** → a large, slow-moving coarse-noise swell across the whole field
+  (bass reads as a broad pulse, not a local flicker)
+- **mid** → the existing idle flow's amplitude and speed (the background's
+  primary wave gets stronger and quicker with mid-band energy)
+- **high** → a fine, sparse shimmer (`pow(noise, 4)`, so it stays sparkly
+  rather than washing the whole field)
+
+All three are additive and kept subtle (`ambient` in the shader) — the field
+should read as "the space is breathing with the sound," not "there's a
+visualizer in the background." fftSize raised 256 → 1024 for enough bins
+below 200Hz for the low band to mean anything; still cheap, since the browser
+computes the FFT regardless of how many bins get read.
+
 ## Working rules
 
 The tuning loop is mine. The agent cannot hear or see the result in motion, so

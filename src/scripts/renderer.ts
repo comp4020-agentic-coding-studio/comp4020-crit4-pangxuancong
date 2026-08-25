@@ -42,7 +42,12 @@ uniform vec2 uResolution;
 uniform float uTime;
 uniform float uMotionScale;
 uniform float uIdleSpeed;
-uniform float uAnalyserEnergy;
+// A very faint background haze, not a spectrum display: low drives a large,
+// slow pulse; mid drives the main flow's strength and speed; high drives a
+// fine shimmer. The space breathes with the sound rather than "showing" it.
+uniform float uBandLow;
+uniform float uBandMid;
+uniform float uBandHigh;
 uniform float uWellRadius;
 uniform float uHueLow;
 uniform float uHueHigh;
@@ -90,10 +95,26 @@ void main() {
   vec2 aspect = vec2(uResolution.x / uResolution.y, 1.0);
   vec2 p = (vUv - 0.5) * aspect;
 
-  float t = uTime * uIdleSpeed * uMotionScale;
+  // Main flow — the background's primary wave — sped up and thickened by
+  // mid-band energy.
+  float t = uTime * uIdleSpeed * uMotionScale * (0.6 + uBandMid * 0.8);
   float flowA = fbm(p * 1.6 + vec2(t, -t * 0.7));
   float flowB = fbm(p * 2.4 - vec2(t * 0.8, t));
-  float field = flowA * 0.6 + flowB * 0.4;
+  float flow = (flowA * 0.6 + flowB * 0.4) * (0.55 + uBandMid * 0.7);
+
+  // Large-scale slow pulse — coarse, slow-moving noise so bass reads as a
+  // broad swell rather than a local flicker.
+  float pulseT = uTime * uIdleSpeed * uMotionScale * 0.35;
+  float pulse = fbm(p * 0.5 + vec2(pulseT, pulseT * 0.6));
+  float lowGlow = pulse * uBandLow * 0.55;
+
+  // Fine shimmer — high, sparse, sparkly, never a bar or a wedge.
+  float shimmerT = uTime * uIdleSpeed * uMotionScale * 2.0;
+  float shimmerNoise = fbm(p * 7.0 + vec2(shimmerT, -shimmerT));
+  float shimmer = pow(clamp(shimmerNoise, 0.0, 1.0), 4.0) * uBandHigh * 1.6;
+
+  float field = flow + lowGlow + shimmer;
+  float ambient = lowGlow * 0.6 + shimmer * 0.5;
 
   float glow = 0.0;
   float hueAcc = 0.0;
@@ -123,7 +144,7 @@ void main() {
   vec3 lit = mix(base, tint, clamp(glow + field * 0.12, 0.0, 1.0));
 
   float vignette = smoothstep(1.15, 0.15, length(p));
-  vec3 color = lit * (0.4 + glow * 1.5 + uAnalyserEnergy * 0.3) * vignette;
+  vec3 color = lit * (0.4 + glow * 1.5 + ambient) * vignette;
 
   gl_FragColor = vec4(color, 1.0);
 }
@@ -147,7 +168,9 @@ interface Uniforms {
   time: WebGLUniformLocation | null;
   motionScale: WebGLUniformLocation | null;
   idleSpeed: WebGLUniformLocation | null;
-  analyserEnergy: WebGLUniformLocation | null;
+  bandLow: WebGLUniformLocation | null;
+  bandMid: WebGLUniformLocation | null;
+  bandHigh: WebGLUniformLocation | null;
   wellRadius: WebGLUniformLocation | null;
   hueLow: WebGLUniformLocation | null;
   hueHigh: WebGLUniformLocation | null;
@@ -193,7 +216,9 @@ export class FluidRenderer {
       time: gl.getUniformLocation(program, "uTime"),
       motionScale: gl.getUniformLocation(program, "uMotionScale"),
       idleSpeed: gl.getUniformLocation(program, "uIdleSpeed"),
-      analyserEnergy: gl.getUniformLocation(program, "uAnalyserEnergy"),
+      bandLow: gl.getUniformLocation(program, "uBandLow"),
+      bandMid: gl.getUniformLocation(program, "uBandMid"),
+      bandHigh: gl.getUniformLocation(program, "uBandHigh"),
       wellRadius: gl.getUniformLocation(program, "uWellRadius"),
       hueLow: gl.getUniformLocation(program, "uHueLow"),
       hueHigh: gl.getUniformLocation(program, "uHueHigh"),
@@ -220,7 +245,12 @@ export class FluidRenderer {
     this.gl.uniform2f(this.uniforms.resolution, width, height);
   }
 
-  draw(timeSec: number, points: RenderPoint[], analyserEnergy: number, reducedMotion: boolean): void {
+  draw(
+    timeSec: number,
+    points: RenderPoint[],
+    bands: { low: number; mid: number; high: number },
+    reducedMotion: boolean,
+  ): void {
     const gl = this.gl;
     const count = Math.min(points.length, MAX_POINTS);
     for (let i = 0; i < count; i += 1) {
@@ -234,7 +264,9 @@ export class FluidRenderer {
 
     gl.uniform1f(this.uniforms.time, timeSec);
     gl.uniform1f(this.uniforms.motionScale, reducedMotion ? TUNE.reducedMotionScale : 1);
-    gl.uniform1f(this.uniforms.analyserEnergy, analyserEnergy);
+    gl.uniform1f(this.uniforms.bandLow, bands.low);
+    gl.uniform1f(this.uniforms.bandMid, bands.mid);
+    gl.uniform1f(this.uniforms.bandHigh, bands.high);
     gl.uniform1i(this.uniforms.pointCount, count);
     gl.uniform4fv(this.uniforms.points, this.pointsBuffer);
 
